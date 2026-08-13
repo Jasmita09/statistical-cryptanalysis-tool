@@ -7,11 +7,11 @@ POSSIBLE_CHARS = "".join(chr(i) for i in range(32, 127))
 NUM_CHARS = len(POSSIBLE_CHARS)
 
 try:
-    freq_df = pd.read_csv("english_frequency.csv")
+    freq_df = pd.read_csv("english_frequencies.csv")
     freq_df["Letter"] = freq_df["Letter"].str.upper()
     ENGLISH_FREQS = freq_df.set_index("Letter")["Frequency"].to_dict()
 except FileNotFoundError:
-    print("[!] Warning: 'english_frequency.csv' not found. Auto-crack (Option 4) will use uniform backup.")
+    print("[!] Warning: 'english_frequencies.csv' not found. Auto-crack (Option 4) will use uniform backup.")
     ENGLISH_FREQS = {letter: 4.0 for letter in string.ascii_uppercase}
 
 def shift_message(message, key, mode):
@@ -45,16 +45,18 @@ def get_observed_counts(cleaned_text: str) -> dict:
 def calculate_chi_squared(text: str) -> float:
     cleaned_text = clean_text(text)
     total_letters = len(cleaned_text)
-    if total_letters == 0:
+    if total_letters == 0 or (total_letters / len(text)) < 0.50:
         return float('inf')  
+        
     observed_dict = get_observed_counts(cleaned_text)
     observed = pd.Series(observed_dict)
     expected = pd.Series({
         letter: (ENGLISH_FREQS.get(letter, 1.0) / 100.0) * total_letters 
         for letter in string.ascii_uppercase
     })
+    
     chi_squared_series = ((observed - expected) ** 2) / expected
-    return float(chi_squared_series.sum())
+    return float(chi_squared_series.sum()) / total_letters
     
 def auto_crack(encrypted_message):
     results = []
